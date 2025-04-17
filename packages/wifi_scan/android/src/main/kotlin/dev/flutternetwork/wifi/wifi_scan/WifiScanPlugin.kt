@@ -15,6 +15,8 @@ import androidx.annotation.NonNull
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.core.location.LocationManagerCompat
+import com.angcyo.wifi.EnterpriseCertificateEnum
+import com.angcyo.wifi.WiFiHelper
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.embedding.engine.plugins.activity.ActivityAware
 import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding
@@ -169,12 +171,15 @@ class WifiScanPlugin : FlutterPlugin, MethodCallHandler, ActivityAware,
                             AskLocPermResult.GRANTED -> {
                                 result.success(canStartScan(askPermission = false))
                             }
+
                             AskLocPermResult.UPGRADE_TO_FINE -> {
                                 result.success(CAN_START_SCAN_NO_LOC_PERM_UPGRADE_ACCURACY)
                             }
+
                             AskLocPermResult.DENIED -> {
                                 result.success(CAN_START_SCAN_NO_LOC_PERM_DENIED)
                             }
+
                             AskLocPermResult.ERROR_NO_ACTIVITY -> {
                                 result.error(
                                     ERROR_NULL_ACTIVITY,
@@ -184,9 +189,11 @@ class WifiScanPlugin : FlutterPlugin, MethodCallHandler, ActivityAware,
                             }
                         }
                     }
+
                     else -> result.success(canCode)
                 }
             }
+
             "startScan" -> result.success(startScan())
             "canGetScannedResults" -> {
                 val askPermission = call.argument<Boolean>("askPermissions") ?: return result.error(
@@ -194,18 +201,21 @@ class WifiScanPlugin : FlutterPlugin, MethodCallHandler, ActivityAware,
                     "askPermissions argument is null",
                     null
                 )
-                when(val canCode = canGetScannedResults(askPermission)){
+                when (val canCode = canGetScannedResults(askPermission)) {
                     ASK_FOR_LOC_PERM -> askForLocationPermission { askResult ->
                         when (askResult) {
                             AskLocPermResult.GRANTED -> {
                                 result.success(canGetScannedResults(askPermission = false))
                             }
+
                             AskLocPermResult.UPGRADE_TO_FINE -> {
                                 result.success(CAN_GET_RESULTS_NO_LOC_PERM_UPGRADE_ACCURACY)
                             }
+
                             AskLocPermResult.DENIED -> {
                                 result.success(CAN_GET_RESULTS_NO_LOC_PERM_DENIED)
                             }
+
                             AskLocPermResult.ERROR_NO_ACTIVITY -> {
                                 result.error(
                                     ERROR_NULL_ACTIVITY,
@@ -215,10 +225,58 @@ class WifiScanPlugin : FlutterPlugin, MethodCallHandler, ActivityAware,
                             }
                         }
                     }
+
                     else -> result.success(canCode)
                 }
             }
+
             "getScannedResults" -> result.success(getScannedResults())
+            //--2025-04-17
+            "connect" -> {
+                val ssid = call.argument<String>("ssid")
+                    ?: return result.error("404", null, null)
+                val bssid = call.argument<String>("bssid")
+                val password = call.argument<String>("password")
+                val enterpriseCertificate = call.argument<String>("enterpriseCertificate")
+                    ?.let { EnterpriseCertificateEnum.valueOf(it) }
+                    ?: EnterpriseCertificateEnum.UNKNOWN
+                val withInternet = call.argument<Boolean>("withInternet") ?: false
+                val timeoutInSeconds = call.argument<Int>("timeoutInSeconds") ?: 30
+                val forceCompat = call.argument<Boolean>("forceCompat") ?: false
+
+                if (!::context.isInitialized) {
+                    return result.error("500", "Context is not initialized", null)
+                }
+
+                WiFiHelper.requestNetwork(
+                    result,
+                    context,
+                    ssid,
+                    bssid,
+                    password,
+                    enterpriseCertificate,
+                    withInternet,
+                    timeoutInSeconds,
+                    forceCompat,
+                )
+            }
+
+            "disconnect" -> {
+                if (!::context.isInitialized) {
+                    return result.error("500", "Context is not initialized", null)
+                }
+
+                result.success(WiFiHelper.resetDefaultNetwork(context))
+            }
+
+            "getCurrentSSID" -> {
+                if (!::context.isInitialized) {
+                    return result.error("500", "Context is not initialized", null)
+                }
+
+                result.success(WiFiHelper.getCurrentSSID(context))
+            }
+
             else -> result.notImplemented()
         }
     }
@@ -325,6 +383,7 @@ class WifiScanPlugin : FlutterPlugin, MethodCallHandler, ActivityAware,
                     requiresFineButAskBoth && grantArray.first() == PackageManager.PERMISSION_GRANTED -> {
                         AskLocPermResult.UPGRADE_TO_FINE
                     }
+
                     else -> AskLocPermResult.DENIED
                 }
             )

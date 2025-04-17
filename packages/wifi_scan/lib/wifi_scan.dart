@@ -86,4 +86,34 @@ class WiFiScan {
         }
         return const <WiFiAccessPoint>[];
       });
+
+  /// Connect to a Wi-Fi network.
+  Future<bool?> connect({
+    required String ssid,
+    String? password,
+    EnterpriseCertificateEnum enterpriseCertificate =
+        EnterpriseCertificateEnum.WPA2_PSK,
+    String? bssid,
+    bool withInternet = false,
+    int timeoutInSeconds = 30,
+    bool forceCompat = false,
+  }) async =>
+      await _channel.invokeMethod<bool>('connect', {
+        'ssid': ssid,
+        'password': password,
+        'enterpriseCertificate': enterpriseCertificate.name,
+        'withInternet': withInternet,
+        'timeoutInSeconds': timeoutInSeconds,
+        'forceCompat': forceCompat,
+      });
+
+  /// Disconnect from Wi-Fi network.
+  Future<bool?> disconnect() async =>
+      await _channel.invokeMethod<bool>('disconnect');
+
+  /// Get current SSID.
+  Future<String?> getCurrentSSID() async =>
+      await _channel.invokeMethod<String?>('getCurrentSSID');
 }
+
+enum EnterpriseCertificateEnum { WPA2_PSK, WPA3_SAE }

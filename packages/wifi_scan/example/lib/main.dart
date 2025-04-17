@@ -167,6 +167,8 @@ class _MyAppState extends State<MyApp> {
 ///
 /// Can see details when tapped.
 class _AccessPointTile extends StatelessWidget {
+  static String? _connectedSSID;
+
   final WiFiAccessPoint accessPoint;
 
   const _AccessPointTile({Key? key, required this.accessPoint})
@@ -221,6 +223,35 @@ class _AccessPointTile extends StatelessWidget {
                   "operatorFriendlyName", accessPoint.operatorFriendlyName),
               _buildInfo("venueName", accessPoint.venueName),
               _buildInfo("is80211mcResponder", accessPoint.is80211mcResponder),
+              //--
+              OutlinedButton(
+                  onPressed: () async {
+                    final ssid = await WiFiScan.instance.getCurrentSSID();
+                    if (context.mounted) {
+                      kShowSnackBar(context, "SSID: $ssid");
+                    }
+                  },
+                  child: const Text("CurrentSSID")),
+              if (kDebugMode || accessPoint.capabilities == "[ESS]")
+                FilledButton(
+                    onPressed: () async {
+                      final connected = await WiFiScan.instance
+                          .connect(ssid: title, password: "1234abcd");
+                      _connectedSSID = connected == true ? title : null;
+                      if (context.mounted) {
+                        kShowSnackBar(context, "Connected: $connected");
+                      }
+                    },
+                    child: const Text("Connect")),
+              FilledButton(
+                  onPressed: () async {
+                    final disconnected = await WiFiScan.instance.disconnect();
+                    _connectedSSID = disconnected == true ? null : title;
+                    if (context.mounted) {
+                      kShowSnackBar(context, "Disconnected: $disconnected");
+                    }
+                  },
+                  child: const Text("Disconnect")),
             ],
           ),
         ),
